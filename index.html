@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LPC Pattern Clothier</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#15171c; --panel:#1d2027; --panel2:#23262f; --line:#30343f;
+    --txt:#e6e8ee; --muted:#9aa3b2; --accent:#5ad19a; --accent2:#7aa2ff; --warn:#ffd166;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;font-weight:650}
+  header .sub{color:var(--muted);font-size:12px}
+  .layout{display:grid;grid-template-columns:380px 1fr;gap:0;min-height:calc(100vh - 53px)}
+  .controls{padding:16px;border-right:1px solid var(--line);overflow:auto}
+  .stage{padding:16px;overflow:auto}
+  .group{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+  .group h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 10px}
+  .drop{border:1.5px dashed var(--line);border-radius:8px;padding:14px;text-align:center;color:var(--muted);cursor:pointer;transition:.15s}
+  .drop:hover,.drop.over{border-color:var(--accent);color:var(--txt);background:#1a2a22}
+  .drop b{color:var(--accent2)}
+  .row{display:flex;align-items:center;gap:8px;margin:8px 0}
+  .row label{flex:1;color:var(--muted)}
+  .row output{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
+  input[type=range]{flex:1;accent-color:var(--accent)}
+  input[type=number]{width:62px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:4px 6px}
+  input[type=color]{width:42px;height:28px;background:none;border:1px solid var(--line);border-radius:6px;padding:0;cursor:pointer}
+  input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:6px 8px}
+  select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 8px}
+  .tabs{display:flex;gap:6px;margin-bottom:10px}
+  .tab{flex:1;text-align:center;padding:7px;border:1px solid var(--line);border-radius:7px;cursor:pointer;color:var(--muted);background:var(--panel2);font-size:13px}
+  .tab.active{border-color:var(--accent);color:var(--txt);background:#1a2a22}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);cursor:pointer;font-size:13px;width:100%}
+  .btn.primary{background:var(--accent);color:#06281a;border-color:var(--accent);font-weight:650}
+  .btn.sm{width:auto;padding:5px 10px;font-size:12px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btnrow{display:flex;gap:8px}
+  .swatches{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .pill{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+  .acc{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--panel2)}
+  .acc>summary{cursor:pointer;padding:8px 10px;font-size:13px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  .acc>summary::-webkit-details-marker{display:none}
+  .acc .body{padding:8px 10px;border-top:1px solid var(--line)}
+  .acc .count{font-size:11px;color:var(--muted);font-weight:400}
+  .chklist{max-height:230px;overflow:auto;margin-top:6px}
+  .chk{display:flex;align-items:center;gap:7px;padding:3px 2px;font-size:12.5px}
+  .chk input{accent-color:var(--accent)}
+  .chk label{cursor:pointer;color:var(--txt)}
+  .cards{display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+  .card .name{font-weight:600;font-size:13px;word-break:break-all}
+  .card .meta{font-size:11px;color:var(--muted)}
+  .pair{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+  .pane{display:flex;flex-direction:column;gap:6px}
+  .pane span{font-size:11px;color:var(--muted)}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:
+     repeating-conic-gradient(#262a33 0 25%, #20232b 0 50%) 0 0/16px 16px;border:1px solid var(--line);border-radius:6px}
+  .empty{color:var(--muted);text-align:center;padding:60px 20px;border:1.5px dashed var(--line);border-radius:12px}
+  .empty b{color:var(--accent2)}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px}
+  .minilink{color:var(--accent2);cursor:pointer;text-decoration:underline;font-size:12px}
+  .err{color:var(--warn);font-size:12px;margin-top:8px}
+  .status{font-size:12px;color:var(--accent);margin-top:8px;min-height:16px}
+  .previewWrap{display:flex;flex-direction:column;gap:16px;align-items:center;padding-top:8px}
+  .slots{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;width:100%}
+  .slot{display:flex;flex-direction:column;gap:4px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .slot select{min-width:160px}
+  .pctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+  .bigprev{width:440px;max-width:90vw;height:440px;max-height:90vw;image-rendering:pixelated;
+     background:radial-gradient(circle at 50% 40%, #2b313d 0%, #191c23 72%);border:1px solid var(--line);border-radius:16px}
+  .pbar{display:flex;gap:10px;justify-content:center;margin:16px 0}
+  .pbar .btn{width:auto;padding:11px 20px;font-size:14px}
+  #diceBtn{font-size:16px}
+  footer.credit{padding:14px 20px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;line-height:1.6;text-align:center}
+  footer.credit a{color:var(--accent2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌺 LPC Pattern Clothier</h1>
+  <span class="sub">Pick a body, tick the clothes you use, drop in a texture — re-skin every animation of the whole outfit in one go.</span>
+</header>
+
+<div class="layout">
+  <div class="controls">
+
+    <div class="group">
+      <h2>1 · Source</h2>
+      <div class="tabs">
+        <div class="tab active" data-src="repo">LPC catalogue</div>
+        <div class="tab" data-src="upload">Upload</div>
+      </div>
+
+      <div id="panelRepo">
+        <div class="row"><label>Body</label><select id="bodySel"></select></div>
+        <div class="row"><label>Animations</label>
+          <select id="animSel">
+            <option value="all">All (15)</option>
+            <option value="wst">Walk · Slash · Thrust</option>
+            <option value="move">Idle · Walk · Run</option>
+          </select>
+        </div>
+        <div class="btnrow" style="margin:6px 0">
+          <button class="btn sm" id="saveCfg">★ Save as default</button>
+          <button class="btn sm" id="resetCfg">↺ Reset</button>
+        </div>
+        <div id="cats"><div class="status">Open a category below to load its items.</div></div>
+        <div class="hint">Tick whole items — every animation gets re-skinned (base item only; colour variants are skipped since
+          we're recolouring anyway). Streams live from the
+          <a class="minilink" id="repoLink" target="_blank" rel="noopener">liberatedpixelcup</a> repo.</div>
+      </div>
+
+      <div id="panelUpload" style="display:none">
+        <div class="drop" id="dropTpl">Drop one or more <b>LPC garment PNGs</b><br>(any sheet) or click to choose</div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>2 · Pattern source</h2>
+      <div class="tabs">
+        <div class="tab active" data-mode="texture">Texture</div>
+        <div class="tab" data-mode="color">Colour</div>
+        <div class="tab" data-mode="speckle">Speckle</div>
+        <div class="tab" data-mode="print">Print</div>
+      </div>
+      <div id="panelTexture">
+        <div class="drop" id="dropPat">Drop a <b>pattern image</b> or click</div>
+        <div class="row"><label>Tile size (px)</label><input type="range" id="tileSize" min="4" max="48" value="16"><output id="tileSizeV">16</output></div>
+        <div class="row"><label>Colours</label><input type="range" id="numColors" min="2" max="16" value="6"><output id="numColorsV">6</output></div>
+      </div>
+      <div id="panelColor" style="display:none">
+        <div class="row"><label>Fabric colour</label><input type="color" id="solidColor" value="#c0392b"></div>
+      </div>
+      <div id="panelSpeckle" style="display:none">
+        <div class="row"><label>Base</label><input type="color" id="spBase" value="#1f6f78"></div>
+        <div class="row"><label>Accent 1</label><input type="color" id="spA1" value="#f4c430"></div>
+        <div class="row"><label>Accent 2</label><input type="color" id="spA2" value="#e84a5f"></div>
+        <div class="row"><label>Accent 3</label><input type="color" id="spA3" value="#6ab04c"></div>
+        <div class="row"><label>Density</label><input type="range" id="spDensity" min="2" max="40" value="14"><output id="spDensityV">14</output></div>
+      </div>
+      <div id="panelPrint" style="display:none">
+        <div class="row"><label>Shirt colour</label><input type="color" id="decalBase" value="#161616"></div>
+        <div class="drop" id="decalDrop">Drop a <b>graphic</b> (skull, logo…) or click</div>
+        <div class="row"><label>Print size</label><input type="range" id="decalSize" min="6" max="30" value="16"><output id="decalSizeV">16</output></div>
+        <div class="row"><label>Chest height</label><input type="range" id="decalY" min="14" max="46" value="28"><output id="decalYV">28</output></div>
+        <div class="row"><label>Placement</label><select id="decalPlace"><option value="front">Front only</option><option value="back">Back only</option><option value="both">Front &amp; back</option></select></div>
+        <div class="hint">Stamps the graphic on the chest (front + back), clipped to the shirt fabric and shaded with its folds. Small prints read best.</div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>3 · Fit</h2>
+      <div class="row"><label>Cell size</label><input type="number" id="cellSize" value="64" min="8" step="1"></div>
+      <div class="row"><label>Shading strength</label><input type="range" id="shading" min="0" max="100" value="100"><output id="shadingV">100</output></div>
+      <div class="row"><label>Keep outline</label><input type="range" id="outline" min="0" max="40" value="18"><output id="outlineV">18</output></div>
+      <div class="row"><label>Anchor per frame</label><input type="checkbox" id="anchor" checked></div>
+      <div class="row"><label>Preview zoom</label><input type="range" id="zoom" min="1" max="8" value="3"><output id="zoomV">3</output></div>
+    </div>
+
+  </div>
+
+  <div class="stage">
+    <div id="cards" class="cards"></div>
+    <div id="previewBar" class="pbar">
+      <button class="btn" id="buildPreview">↻ Preview / Refresh</button>
+      <button class="btn" id="diceBtn" title="Random outfit from your ticked items">🎲 Randomize</button>
+      <button class="btn primary" id="downloadAll" disabled>⬇ Download all</button>
+    </div>
+    <div class="pbar" style="margin-top:-8px"><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)">Max sheets <input type="number" id="maxSheets" value="300" min="1"></label></div>
+    <div id="status" class="status" style="text-align:center"></div>
+    <div id="err" class="err" style="text-align:center"></div>
+    <div id="empty" class="empty">Pick a <b>body</b>, tick the clothes you want, choose a <b>texture/colour</b>, then hit <b>Preview / Refresh</b> below.<br><br>Use 🎲 to roll a random outfit from your picks. Download bundles every animation into one zip.</div>
+  </div>
+</div>
+
+<input type="file" id="fileTpl" accept="image/png,image/*" multiple style="display:none">
+<input type="file" id="filePat" accept="image/*" style="display:none">
+<input type="file" id="decalFile" accept="image/*" style="display:none">
+
+<script>
+const $ = s => document.querySelector(s);
+
+// surface any runtime error visibly so it's never a silent blank page
+window.addEventListener('error',ev=>{try{const e=document.getElementById('err');if(e)e.textContent='JS error: '+(ev.message||ev.error)+' @line '+ev.lineno;}catch(_){}});
+
+const REPO = "liberatedpixelcup/Universal-LPC-Spritesheet-Character-Generator";
+const BRANCH = "master";
+const API = p => `https://api.github.com/repos/${REPO}/contents/${p}?ref=${BRANCH}`;
+const TREE = sha => `https://api.github.com/repos/${REPO}/git/trees/${sha}?recursive=1`;
+const RAW = p => `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${p}`;
+
+// clothing-relevant top-level categories to surface
+const CLOTHING_CATS = ["torso","legs","feet","dress","cape","neck","shoulders","arms","hat"];
+const BODIES = ["male","female","teen","child","muscular","pregnant"];
+const BODYKEYS = [...BODIES,"adult"]; // hats/head-gear fold under adult/child instead of body type
+const ANIM_SETS = { all:null, wst:["walk","slash","thrust"], move:["idle","walk","run"] };
+
+const DEFAULT_CONFIG = {
+  body: "male",
+  anims: "all",
+  // checked items, as "category/itemRelPath"
+  items: [
+    "torso/clothes/shortsleeve/tshirt",
+    "legs/pants",
+    "feet/shoes/basic",
+  ],
+  colorPref: ["white","gray","grey","light","tan","sky","linen","natural","navy","black"],
+};
+
+const state = {
+  mode: 'texture',
+  patternImg: null,
+  decalImg: null,
+  templates: [],       // preview/upload sheets: {name,w,h,src,outCanvas,job?}
+  catSha: {},          // category -> tree sha
+  catalog: {},         // category -> Map(itemRel -> Map(body -> Map(anim -> [{color,path}])))
+  checked: new Set(),  // "cat/itemRel"
+  config: null,
+};
+
+/* ---------- config persist ---------- */
+function loadConfig(){
+  try{ const s=localStorage.getItem('lpcClothierConfig'); if(s) return JSON.parse(s); }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+}
+function applyConfig(c){
+  state.config=c;
+  $('#bodySel').value=c.body; $('#animSel').value=c.anims;
+  state.checked=new Set(c.items||[]);
+}
+
+/* ---------- pixel helpers ---------- */
+function hexToRgb(h){const n=parseInt(h.slice(1),16);return [n>>16&255,n>>8&255,n&255];}
+function lum(r,g,b){return (0.299*r+0.587*g+0.114*b)/255;}
+function medianCut(pix,n){
+  let buckets=[pix];
+  while(buckets.length<n){
+    let bi=-1,best=-1;
+    buckets.forEach((b,i)=>{ if(b.length<2)return; let mn=[255,255,255],mx=[0,0,0];
+      for(const p of b)for(let c=0;c<3;c++){if(p[c]<mn[c])mn[c]=p[c];if(p[c]>mx[c])mx[c]=p[c];}
+      const rng=Math.max(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]); if(rng>best){best=rng;bi=i;} });
+    if(bi<0)break;
+    const b=buckets[bi]; let mn=[255,255,255],mx=[0,0,0];
+    for(const p of b)for(let c=0;c<3;c++){if(p[c]<mn[c])mn[c]=p[c];if(p[c]>mx[c])mx[c]=p[c];}
+    let ch=0,rng=0;for(let c=0;c<3;c++){const r=mx[c]-mn[c];if(r>rng){rng=r;ch=c;}}
+    b.sort((p,q)=>p[ch]-q[ch]); const mid=b.length>>1;
+    buckets.splice(bi,1,b.slice(0,mid),b.slice(mid));
+  }
+  return buckets.map(b=>{const s=[0,0,0];for(const p of b)for(let c=0;c<3;c++)s[c]+=p[c];return b.length?[s[0]/b.length,s[1]/b.length,s[2]/b.length]:[0,0,0];});
+}
+function nearest(m,r,g,b){let bi=0,bd=1e9;for(let i=0;i<m.length;i++){const d=(m[i][0]-r)**2+(m[i][1]-g)**2+(m[i][2]-b)**2;if(d<bd){bd=d;bi=i;}}return m[bi];}
+function buildTile(){
+  const T=Math.max(2,+$('#tileSize').value|0);
+  if(state.mode==='color'||state.mode==='print'){const c=hexToRgb($(state.mode==='print'?'#decalBase':'#solidColor').value);const d=new ImageData(1,1);d.data.set([c[0],c[1],c[2],255]);return {data:d,size:1};}
+  if(state.mode==='speckle'){
+    const base=hexToRgb($('#spBase').value),acc=[$('#spA1').value,$('#spA2').value,$('#spA3').value].map(hexToRgb),density=+$('#spDensity').value;
+    const d=new ImageData(T,T);for(let i=0;i<T*T;i++){const o=i*4;d.data[o]=base[0];d.data[o+1]=base[1];d.data[o+2]=base[2];d.data[o+3]=255;}
+    const specks=Math.round(density*T*T/256);
+    for(let s=0;s<specks;s++){const x=Math.random()*T|0,y=Math.random()*T|0,a=acc[Math.random()*acc.length|0],o=(y*T+x)*4;d.data[o]=a[0];d.data[o+1]=a[1];d.data[o+2]=a[2];}
+    return {data:d,size:T};
+  }
+  if(!state.patternImg)return null;
+  const tmp=document.createElement('canvas');tmp.width=T;tmp.height=T;
+  const tx=tmp.getContext('2d');tx.imageSmoothingEnabled=true;tx.imageSmoothingQuality='high';tx.drawImage(state.patternImg,0,0,T,T);
+  const id=tx.getImageData(0,0,T,T);
+  const px=[];for(let i=0;i<T*T;i++)px.push([id.data[i*4],id.data[i*4+1],id.data[i*4+2]]);
+  const means=medianCut(px.map(p=>p.slice()),Math.max(2,+$('#numColors').value|0));
+  for(let i=0;i<T*T;i++){const m=nearest(means,id.data[i*4],id.data[i*4+1],id.data[i*4+2]);id.data[i*4]=m[0];id.data[i*4+1]=m[1];id.data[i*4+2]=m[2];}
+  return {data:id,size:T};
+}
+
+/* ---------- reskin ---------- */
+function reskinImageData(src,tile){
+  const w=src.width,h=src.height,S=src.data,out=new ImageData(w,h),O=out.data;
+  const cell=Math.max(1,+$('#cellSize').value|0),shade=+$('#shading').value/100,outTh=+$('#outline').value/100,anchor=$('#anchor').checked;
+  const TS=tile.size,TD=tile.data.data;
+  let sum=0,cnt=0;for(let i=0;i<w*h;i++){const a=S[i*4+3];if(a<8)continue;const L=lum(S[i*4],S[i*4+1],S[i*4+2]);if(L<outTh)continue;sum+=L;cnt++;}
+  const refL=cnt?sum/cnt:0.6;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4,a=S[i+3];
+    if(a<8){O[i+3]=0;continue;}
+    const L=lum(S[i],S[i+1],S[i+2]);
+    if(L<outTh){O[i]=S[i];O[i+1]=S[i+1];O[i+2]=S[i+2];O[i+3]=a;continue;}
+    const lx=anchor?(x%cell):x,ly=anchor?(y%cell):y;
+    const ti=(((ly%TS)+TS)%TS*TS+((lx%TS)+TS)%TS)*4;
+    const m=1+shade*((L/refL)-1);
+    O[i]=Math.max(0,Math.min(255,TD[ti]*m));O[i+1]=Math.max(0,Math.min(255,TD[ti+1]*m));O[i+2]=Math.max(0,Math.min(255,TD[ti+2]*m));O[i+3]=a;
+  }
+  return out;
+}
+/* ---------- chest "print" decal (Print mode) ---------- */
+function buildDecal(){
+  if(state.mode!=='print'||!state.decalImg) return null;
+  const S=Math.max(4,+$('#decalSize').value|0), img=state.decalImg, r=img.width/img.height;
+  let w=S,h=S; if(r>1) h=Math.max(2,Math.round(S/r)); else w=Math.max(2,Math.round(S*r));
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; x.drawImage(img,0,0,w,h);
+  return {data:x.getImageData(0,0,w,h), w, h, cy:+$('#decalY').value, place:$('#decalPlace').value};
+}
+function applyDecal(imgData, decal, cell){
+  if(!decal) return imgData;
+  const W=imgData.width,H=imgData.height,O=imgData.data,dw=decal.w,dh=decal.h,DD=decal.data.data;
+  const ox=Math.round(cell/2-dw/2), oy=Math.round(decal.cy-dh/2), rows=Math.round(H/cell), cols=Math.round(W/cell);
+  for(let cr=0;cr<rows;cr++){
+    const dir=cr%4;
+    const show = decal.place==='both' ? (dir===2||dir===0) : decal.place==='back' ? (dir===0) : (dir===2);
+    if(!show) continue; // sides never get a chest/back print
+    for(let cc=0;cc<cols;cc++){
+      const bx=cc*cell, by=cr*cell;
+      for(let dy=0;dy<dh;dy++)for(let dx=0;dx<dw;dx++){
+        const di=(dy*dw+dx)*4, da=DD[di+3]; if(da<40) continue;
+        const px=bx+ox+dx, py=by+oy+dy; if(px<0||py<0||px>=W||py>=H) continue;
+        const oi=(py*W+px)*4; if(O[oi+3]<20) continue; // only on fabric
+        const f=Math.max(0.45,Math.min(1.2, lum(O[oi],O[oi+1],O[oi+2])/0.6)), a=da/255;
+        O[oi]  =Math.round(O[oi]*(1-a)+Math.min(255,DD[di]*f)*a);
+        O[oi+1]=Math.round(O[oi+1]*(1-a)+Math.min(255,DD[di+1]*f)*a);
+        O[oi+2]=Math.round(O[oi+2]*(1-a)+Math.min(255,DD[di+2]*f)*a);
+      }
+    }
+  }
+  return imgData;
+}
+function skin(src,tile){ return applyDecal(reskinImageData(src,tile), buildDecal(), Math.max(1,+$('#cellSize').value|0)); }
+
+/* ---------- preview render ---------- */
+function render(){
+  $('#err').textContent='';
+  const have=state.templates.length>0;
+  const ready=have&&(state.mode!=='texture'||state.patternImg);
+  $('#empty').style.display=have?'none':'block';
+  $('#downloadAll').disabled=!ready;
+  if(!have){$('#cards').innerHTML='';return;}
+  let tile=null; try{tile=buildTile();}catch(e){$('#err').textContent='Pattern error: '+e.message;}
+  const zoom=+$('#zoom').value,cards=$('#cards');cards.innerHTML='';
+  state.templates.forEach((tpl,idx)=>{
+    const card=document.createElement('div');card.className='card';
+    const head=document.createElement('div');head.className='top';
+    const meta=tpl.job?`<span class="meta">${tpl.job.body} · ${tpl.job.anims.length} anim${tpl.job.anims.length>1?'s':''}</span>`:'';
+    head.innerHTML=`<span class="name">${tpl.name}</span><span>${meta} &nbsp; <span class="minilink" data-rm="${idx}">remove</span></span>`;
+    card.appendChild(head);
+    const pair=document.createElement('div');pair.className='pair';
+    const mk=(label,draw)=>{const p=document.createElement('div');p.className='pane';const c=document.createElement('canvas');c.width=tpl.w;c.height=tpl.h;c.style.width=(tpl.w*zoom)+'px';c.style.height=(tpl.h*zoom)+'px';draw(c);p.innerHTML='<span>'+label+'</span>';p.appendChild(c);return c;};
+    mk('original',c=>c.getContext('2d').putImageData(tpl.src,0,0));
+    const c2=mk(tpl.job?'re-skinned (walk preview)':'re-skinned',c=>{});
+    if(tile){c2.getContext('2d').putImageData(skin(tpl.src,tile),0,0);tpl.outCanvas=c2;}
+    [...card.querySelectorAll('.pane')].forEach(p=>pair.appendChild(p));
+    card.appendChild(pair);cards.appendChild(card);
+  });
+  cards.querySelectorAll('[data-rm]').forEach(el=>el.onclick=()=>{state.templates.splice(+el.dataset.rm,1);render();});
+}
+
+/* ---------- image fetch ---------- */
+function fetchImage(url){return new Promise((res,rej)=>{const img=new Image();img.crossOrigin='anonymous';let done=0;img.onload=()=>{if(!done){done=1;res(img);}};img.onerror=()=>{if(!done){done=1;rej(new Error('img '+url));}};setTimeout(()=>{if(!done){done=1;rej(new Error('timeout '+url));}},15000);img.src=url;});}
+async function fetchImageRetry(url,tries=2){for(let i=0;i<=tries;i++){try{return await fetchImage(url);}catch(e){if(i===tries)throw e;await new Promise(r=>setTimeout(r,250*(i+1)));}}}
+function imgToData(img){const cv=document.createElement('canvas');cv.width=img.width;cv.height=img.height;const cx=cv.getContext('2d');cx.drawImage(img,0,0);return cx.getImageData(0,0,img.width,img.height);}
+
+/* ---------- catalogue ---------- */
+async function loadCatSha(){
+  if(Object.keys(state.catSha).length) return;
+  const r=await fetch(API('spritesheets'));
+  if(!r.ok) throw new Error('GitHub '+r.status+' listing spritesheets');
+  for(const e of await r.json()) if(e.type==='dir') state.catSha[e.name]=e.sha;
+}
+async function loadCategory(cat){
+  if(state.catalog[cat]) return state.catalog[cat];
+  await loadCatSha();
+  const sha=state.catSha[cat]; if(!sha) throw new Error('no category '+cat);
+  const r=await fetch(TREE(sha));
+  if(!r.ok){ if(r.status===403) throw new Error('GitHub hourly limit reached — wait a bit.'); throw new Error('GitHub '+r.status); }
+  const j=await r.json();
+  const items=new Map();
+  for(const t of (j.tree||[])){
+    if(t.type!=='blob'||!/\.png$/i.test(t.path)) continue;
+    const parts=t.path.split('/');
+    const bi=parts.findIndex(p=>BODYKEYS.includes(p));
+    if(bi<1) continue;
+    const item=parts.slice(0,bi).join('/'), body=parts[bi], rest=parts.slice(bi+1);
+    const anim = rest.length===1 ? rest[0].replace(/\.png$/i,'') : rest[0];
+    const color= rest.length===1 ? '_base' : rest[rest.length-1].replace(/\.png$/i,'');
+    const full=`spritesheets/${cat}/${t.path}`;
+    if(!items.has(item)) items.set(item,new Map());
+    const byBody=items.get(item); if(!byBody.has(body)) byBody.set(body,new Map());
+    const byAnim=byBody.get(body); if(!byAnim.has(anim)) byAnim.set(anim,[]);
+    byAnim.get(anim).push({color,path:full});
+  }
+  state.catalog[cat]=items;
+  // refresh body selector options from everything loaded so far
+  refreshBodies();
+  return items;
+}
+function refreshBodies(){
+  const seen=new Set();
+  for(const cat in state.catalog) for(const [,byBody] of state.catalog[cat]) for(const b of byBody.keys()) seen.add(b);
+  const order=BODIES.filter(b=>seen.has(b));
+  if(!order.length) return;
+  const cur=$('#bodySel').value;
+  $('#bodySel').innerHTML=order.map(b=>`<option value="${b}">${b}</option>`).join('');
+  $('#bodySel').value=order.includes(cur)?cur:(order.includes(state.config.body)?state.config.body:order[0]);
+}
+function pickColor(list){
+  for(const pref of state.config.colorPref){ const hit=list.find(c=>c.color===pref); if(hit) return hit; }
+  const base=list.find(c=>c.color==='_base'); return base||list[0];
+}
+// hats/head-gear store under adult/child; map the chosen body to the right key, else null (no art)
+function pickBodyKey(byBody, body){
+  if(byBody.has(body)) return body;
+  const grp = body==='child' ? 'child' : 'adult';
+  if(byBody.has(grp)) return grp;
+  return null;
+}
+
+/* ---------- catalogue UI ---------- */
+async function buildCatUI(){
+  const box=$('#cats'); box.innerHTML='';
+  for(const cat of CLOTHING_CATS){
+    const det=document.createElement('details'); det.className='acc';
+    const sum=document.createElement('summary');
+    sum.innerHTML=`<span>${cat}</span><span class="count" id="cnt-${cat}"></span>`;
+    det.appendChild(sum);
+    const body=document.createElement('div'); body.className='body';
+    body.innerHTML='<div class="status">open to load…</div>';
+    det.appendChild(body);
+    let loaded=false;
+    det.addEventListener('toggle',async()=>{
+      if(!det.open||loaded) return; loaded=true;
+      body.innerHTML='<div class="status">loading '+cat+'…</div>';
+      try{ await loadCategory(cat); renderCatItems(cat,body); $('#cnt-'+cat).textContent=state.catalog[cat].size+' items'; }
+      catch(e){ body.innerHTML='<div class="err">'+e.message+'</div>'; loaded=false; }
+    });
+    box.appendChild(det);
+  }
+}
+function renderCatItems(cat,container){
+  const items=[...state.catalog[cat].keys()].sort();
+  container.innerHTML='';
+  const tools=document.createElement('div'); tools.className='btnrow';
+  tools.innerHTML=`<button class="btn sm" data-all="1">select all</button><button class="btn sm" data-none="1">none</button>`;
+  container.appendChild(tools);
+  const filt=document.createElement('input'); filt.type='text'; filt.placeholder='filter…'; filt.style.marginTop='6px';
+  container.appendChild(filt);
+  const list=document.createElement('div'); list.className='chklist'; container.appendChild(list);
+  const draw=()=>{
+    const f=filt.value.toLowerCase(); list.innerHTML='';
+    for(const it of items){
+      if(f&&!it.toLowerCase().includes(f)) continue;
+      const key=cat+'/'+it;
+      const row=document.createElement('div'); row.className='chk';
+      const id='c_'+key.replace(/[^a-z0-9]/gi,'_');
+      row.innerHTML=`<input type="checkbox" id="${id}" ${state.checked.has(key)?'checked':''}><label for="${id}">${it}</label>`;
+      row.querySelector('input').onchange=e=>{ e.target.checked?state.checked.add(key):state.checked.delete(key); };
+      list.appendChild(row);
+    }
+  };
+  filt.oninput=draw;
+  tools.querySelector('[data-all]').onclick=()=>{ items.forEach(it=>state.checked.add(cat+'/'+it)); draw(); };
+  tools.querySelector('[data-none]').onclick=()=>{ items.forEach(it=>state.checked.delete(cat+'/'+it)); draw(); };
+  draw();
+}
+
+/* ---------- build jobs from checked items ---------- */
+function animFilter(){ return ANIM_SETS[$('#animSel').value]; } // null = all
+function buildJobs(){
+  const body=$('#bodySel').value, want=animFilter(), jobs=[], missing=[];
+  for(const key of state.checked){
+    const slash=key.indexOf('/'); const cat=key.slice(0,slash), item=key.slice(slash+1);
+    const items=state.catalog[cat]; if(!items||!items.has(item)){ missing.push(key+' (not loaded)'); continue; }
+    const byBody=items.get(item);
+    const bk=pickBodyKey(byBody,body);
+    if(!bk){ missing.push(item+' (no '+body+')'); continue; }
+    const byAnim=byBody.get(bk);
+    let names=[...byAnim.keys()]; if(want) names=names.filter(a=>want.includes(a));
+    if(!names.length){ missing.push(item+' (no chosen anims)'); continue; }
+    const anims=names.map(a=>({name:a, path:pickColor(byAnim.get(a)).path}));
+    const walk=byAnim.get('walk'); const previewPath=walk?pickColor(walk).path:anims[0].path;
+    jobs.push({cat,item,body,anims,previewPath, label:cat+'/'+item});
+  }
+  return {jobs,missing};
+}
+
+/* ---------- character preview (catalogue mode) ---------- */
+const PREVIEW_ANIMS=['idle','walk','run','slash','thrust','jump','spellcast'];
+const LAYER_W={cape:0,body:1,dress:2,legs:3,feet:4,torso:5,arms:6,shoulders:7,neck:8,hat:9};
+const DIRS=[['↑',0],['↓',2],['←',1],['→',3]];
+const prev={ body:'', anim:'idle', dir:2, frame:0, cols:9, layers:[], timer:0 };
+
+function imgToCanvas(img){const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);return c;}
+function reskinToCanvas(src,tile){const out=skin(src,tile);const c=document.createElement('canvas');c.width=out.width;c.height=out.height;c.getContext('2d').putImageData(out,0,0);return c;}
+function safeTile(){ try{return buildTile();}catch(e){return null;} }
+
+function checkedByCat(){
+  const byCat={};
+  for(const key of state.checked){ const c=key.slice(0,key.indexOf('/')); (byCat[c]=byCat[c]||[]).push(key.slice(key.indexOf('/')+1)); }
+  for(const c in byCat) byCat[c].sort();
+  return byCat;
+}
+
+async function buildPreview(){
+  if(state.mode==='upload'){ render(); return; }
+  const needCats=[...new Set([...state.checked].map(k=>k.slice(0,k.indexOf('/'))))];
+  if(!needCats.length){ $('#err').textContent='Tick at least one clothing item first.'; return; }
+  $('#status').textContent='Loading catalogue…'; $('#err').textContent='';
+  for(const c of needCats){ try{ await loadCategory(c); }catch(e){ $('#err').textContent=e.message; } }
+  prev.body=$('#bodySel').value;
+  buildPreviewUI();
+  await reloadPreviewLayers();
+  $('#downloadAll').disabled=false;
+}
+
+function buildPreviewUI(){
+  $('#empty').style.display='none';
+  const host=$('#cards'); host.innerHTML='';
+  const wrap=document.createElement('div'); wrap.className='previewWrap';
+
+  // animation + direction row
+  const ctl=document.createElement('div'); ctl.className='pctl';
+  const animS=document.createElement('select'); animS.id='prevAnim';
+  animS.innerHTML=PREVIEW_ANIMS.map(a=>`<option ${a===prev.anim?'selected':''}>${a}</option>`).join('');
+  animS.onchange=()=>{ prev.anim=animS.value; reloadPreviewLayers(); };
+  ctl.appendChild(animS);
+  DIRS.forEach(([sym,d])=>{ const b=document.createElement('button'); b.className='btn sm'; b.textContent=sym; if(d===prev.dir)b.style.borderColor='var(--accent)'; b.onclick=()=>{prev.dir=d;[...ctl.querySelectorAll('button')].forEach(x=>x.style.borderColor='');b.style.borderColor='var(--accent)';drawPreview();}; ctl.appendChild(b); });
+  wrap.appendChild(ctl);
+
+  // big canvas
+  const cv=document.createElement('canvas'); cv.id='prevCanvas'; cv.width=440; cv.height=440; cv.className='bigprev';
+  wrap.appendChild(cv);
+
+  // per-slot "wearing" selectors
+  const byCat=checkedByCat();
+  const slots=document.createElement('div'); slots.className='slots';
+  Object.keys(byCat).sort((a,b)=>(LAYER_W[a]??50)-(LAYER_W[b]??50)).forEach(c=>{
+    const items=byCat[c];
+    const slot=document.createElement('div'); slot.className='slot';
+    const title=document.createElement('span'); title.textContent=c; slot.appendChild(title);
+    const row=document.createElement('div'); row.style.cssText='display:flex;gap:6px;align-items:center';
+    const s=document.createElement('select'); s.id='wear-'+c;
+    s.innerHTML='<option value="">(none)</option>'+items.map(it=>`<option value="${it}">${it.split('/').pop()}</option>`).join('');
+    s.value=items[0];
+    s.onchange=()=>reloadPreviewLayers();
+    const dl=document.createElement('button'); dl.className='btn sm'; dl.textContent='⬇'; dl.title='Download this item — all animations'; dl.onclick=()=>downloadSlotItem(c);
+    row.appendChild(s); row.appendChild(dl);
+    slot.appendChild(row); slots.appendChild(slot);
+  });
+  wrap.appendChild(slots);
+  host.appendChild(wrap);
+}
+
+const HEAD_MAP={male:'male',female:'female',child:'child',teen:'male_small',muscular:'male',pregnant:'female'};
+async function reloadPreviewLayers(){
+  stopPreviewAnim();
+  const anim=prev.anim, body=prev.body, tile=safeTile();
+  const layers=[]; const missing=[];
+  // body base + head (not re-skinned)
+  try{ const bimg=await fetchImageRetry(RAW(`spritesheets/body/bodies/${body}/${anim}.png`),2); layers.push({w:LAYER_W.body, canvas:imgToCanvas(bimg), cols:Math.round(bimg.width/64)}); }catch(e){}
+  try{ const hd=HEAD_MAP[body]||'male'; const himg=await fetchImageRetry(RAW(`spritesheets/head/heads/human/${hd}/${anim}.png`),2); layers.push({w:1.3, canvas:imgToCanvas(himg), cols:Math.round(himg.width/64)}); }catch(e){}
+  // worn garments (re-skinned)
+  for(const c of Object.keys(checkedByCat())){
+    const el=document.getElementById('wear-'+c); const item=el?el.value:null; if(!item) continue;
+    const itemMap=state.catalog[c] && state.catalog[c].get(item);
+    const bk=itemMap && pickBodyKey(itemMap, body);
+    const byBody=bk && itemMap.get(bk);
+    let list=byBody && byBody.get(anim);
+    if(!list && byBody){ const alt=byBody.has('walk')?'walk':(byBody.has('idle')?'idle':[...byBody.keys()][0]); list=alt&&byBody.get(alt); } // piece lacks chosen anim → use its best
+    if(!list){ missing.push(c); continue; }
+    try{ const gimg=await fetchImageRetry(RAW(pickColor(list).path),2); const src=imgToData(gimg);
+      layers.push({w:LAYER_W[c]??50, src, canvas: tile?reskinToCanvas(src,tile):imgToCanvas(gimg), cols:Math.round(gimg.width/64)}); }catch(e){}
+  }
+  layers.sort((a,b)=>a.w-b.w);
+  prev.layers=layers;
+  prev.cols=Math.max(1,(layers.find(l=>l.w===LAYER_W.body)||layers[0]||{cols:9}).cols);
+  prev.frame=0;
+  $('#status').textContent = missing.length ? `No ${body} art in the catalogue for: ${missing.join(', ')} — that body shows bare there. Try the male/female/child body, or pick a different item.` : '';
+  startPreviewAnim();
+}
+function startPreviewAnim(){ stopPreviewAnim(); if(!prev.layers.length){$('#err').textContent='Could not load body/garment sheets for this animation.';return;} prev.timer=setInterval(()=>{ prev.frame=(prev.frame+1)%prev.cols; drawPreview(); }, prev.cols>1?140:600); drawPreview(); }
+function stopPreviewAnim(){ if(prev.timer)clearInterval(prev.timer); prev.timer=0; }
+function drawPreview(){
+  const cv=$('#prevCanvas'); if(!cv) return; const cx=cv.getContext('2d'); cx.imageSmoothingEnabled=false;
+  cx.clearRect(0,0,cv.width,cv.height);
+  const sc=Math.max(1,Math.floor(cv.width/64)-1), dst=64*sc, ox=(cv.width-dst)/2, oy=(cv.height-dst)/2+12;
+  cx.save(); cx.fillStyle='rgba(0,0,0,0.28)'; cx.beginPath(); cx.ellipse(cv.width/2, oy+dst-sc*7, dst*0.26, sc*3.2, 0,0,Math.PI*2); cx.fill(); cx.restore();
+  for(const L of prev.layers){ const col=Math.min(prev.frame, (L.cols||prev.cols)-1); cx.drawImage(L.canvas, col*64, prev.dir*64, 64,64, ox,oy,dst,dst); }
+}
+function previewUpdatePattern(){ if(!prev.layers.length) return; const tile=safeTile(); for(const L of prev.layers){ if(L.src) L.canvas = tile?reskinToCanvas(L.src,tile):L.canvas; } drawPreview(); }
+function onTweak(){ if(state.mode!=='upload' && prev.timer) previewUpdatePattern(); else render(); }
+async function randomizePreview(){
+  if(state.mode==='upload'){ $('#err').textContent='Randomize works in catalogue mode.'; return; }
+  if(!document.getElementById('prevCanvas')){ await buildPreview(); }
+  const selects=[...document.querySelectorAll('select[id^="wear-"]')];
+  if(!selects.length){ $('#err').textContent='Tick some items first, then roll.'; return; }
+  selects.forEach(s=>{ const real=[...s.options].map(o=>o.value).filter(v=>v); if(real.length) s.value=real[Math.floor(Math.random()*real.length)]; });
+  reloadPreviewLayers();
+}
+// download ONE slot's item across every animation it has (re-skinned with the current pattern)
+async function downloadSlotItem(cat){
+  const el=document.getElementById('wear-'+cat); const item=el&&el.value;
+  if(!item){ $('#err').textContent='Pick an item in that slot first.'; return; }
+  const body=prev.body||$('#bodySel').value;
+  const itemMap=state.catalog[cat]&&state.catalog[cat].get(item);
+  const bk=itemMap&&pickBodyKey(itemMap,body);
+  const byBody=bk&&itemMap.get(bk);
+  if(!byBody){ $('#err').textContent='No '+body+' art for '+item+'.'; return; }
+  const tile=safeTile(), folder=(cat+'/'+item).replace(/\//g,'_'), zip=new JSZip(), anims=[...byBody.keys()];
+  let done=0, ok=0; $('#err').textContent='';
+  for(const a of anims){
+    try{
+      const img=await fetchImageRetry(RAW(pickColor(byBody.get(a)).path),2);
+      const blob = tile ? await canvasBlobOf(skin(imgToData(img),tile)) : await new Promise(r=>imgToCanvas(img).toBlob(r,'image/png'));
+      zip.file(`${folder}/${a}.png`, blob); ok++;
+    }catch(e){}
+    $('#status').textContent=`${item}: ${++done}/${anims.length}`;
+  }
+  if(!ok){ $('#err').textContent='Nothing downloaded for '+item+'.'; return; }
+  const out=await zip.generateAsync({type:'blob'});
+  const link=document.createElement('a'); link.href=URL.createObjectURL(out); link.download=folder+'_'+body+'.zip'; link.click();
+  $('#status').textContent=`Saved ${ok} animation(s) for ${item}.`;
+}
+
+/* ---------- export ---------- */
+function canvasBlobOf(imgData){const cv=document.createElement('canvas');cv.width=imgData.width;cv.height=imgData.height;cv.getContext('2d').putImageData(imgData,0,0);return new Promise(r=>cv.toBlob(r,'image/png'));}
+async function downloadAll(){
+  const tile=buildTile(); if(!tile){$('#err').textContent='Pick a pattern first.';return;}
+  const zip=new JSZip();
+  if(state.mode==='upload'){
+    let n=0; for(const t of state.templates){ if(t.outCanvas){ const b=await new Promise(r=>t.outCanvas.toBlob(r,'image/png')); zip.file(t.name.replace(/\.png$/i,'')+'_reskin.png',b); n++; } }
+    if(!n){$('#err').textContent='Nothing to export.';return;}
+  } else {
+    const needCats=[...new Set([...state.checked].map(k=>k.slice(0,k.indexOf('/'))))];
+    for(const c of needCats){ try{ await loadCategory(c); }catch(e){} }
+    const {jobs,missing}=buildJobs();
+    if(!jobs.length){$('#err').textContent='Nothing usable selected'+(missing.length?': '+missing.slice(0,4).join(', '):'')+'.';return;}
+    let total=jobs.reduce((s,j)=>s+j.anims.length,0), done=0, okN=0, failN=0, firstFail='';
+    const maxN=Math.max(1,(+$('#maxSheets').value)||300);
+    if(total>maxN){ $('#err').textContent=`That's ${total} sheets across ${jobs.length} item(s) — over the Max of ${maxN}. Untick some items, switch Animations to a smaller set, or raise Max sheets.`; return; }
+    for(const job of jobs){
+      const folder = job.label.replace(/\//g,'_')+'/'+job.body;
+      for(const a of job.anims){
+        try{
+          const img=await fetchImageRetry(RAW(a.path),2);
+          const out=skin(imgToData(img),tile);
+          zip.file(`${folder}/${a.name}.png`, await canvasBlobOf(out));
+          okN++;
+        }catch(e){ failN++; if(!firstFail) firstFail=a.path; }
+        $('#status').textContent=`Re-skinning… ${++done}/${total} — ${okN} ok, ${failN} failed`;
+      }
+    }
+    $('#err').textContent = failN ? `${failN} sheet(s) failed to fetch (e.g. ${firstFail}). Saved ${okN}.` : '';
+    if(!okN){ $('#err').textContent='Nothing downloaded — every fetch failed (e.g. '+firstFail+'). Likely a network/rate block; try again or fewer items.'; return; }
+    $('#status').textContent=`Packed ${okN} sheet(s)${failN?`, ${failN} failed`:''}. Missing items: ${missing.length?missing.join(', '):'none'}.`;
+  }
+  const blob=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lpc_reskinned_outfit.zip';a.click();
+}
+
+/* ---------- upload mode ---------- */
+function loadTemplateFile(file){const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{state.templates.push({name:file.name,w:img.width,h:img.height,src:imgToData(img)});if(img.width%64===0)$('#cellSize').value=64;render();URL.revokeObjectURL(url);};img.onerror=()=>{$('#err').textContent='Could not load '+file.name;};img.src=url;}
+function loadPatternFile(file){const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{state.patternImg=img;onTweak();};img.src=url;}
+function loadDecalFile(file){const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{state.decalImg=img;onTweak();};img.src=url;}
+function wireDrop(el,inp,h){el.onclick=()=>inp.click();inp.onchange=e=>{[...e.target.files].forEach(h);inp.value='';};el.ondragover=e=>{e.preventDefault();el.classList.add('over');};el.ondragleave=()=>el.classList.remove('over');el.ondrop=e=>{e.preventDefault();el.classList.remove('over');[...e.dataTransfer.files].filter(f=>f.type.startsWith('image')).forEach(h);};}
+
+/* ---------- wiring ---------- */
+wireDrop($('#dropTpl'),$('#fileTpl'),loadTemplateFile);
+wireDrop($('#dropPat'),$('#filePat'),loadPatternFile);
+wireDrop($('#decalDrop'),$('#decalFile'),loadDecalFile);
+document.querySelectorAll('[data-src]').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('[data-src]').forEach(x=>x.classList.remove('active'));t.classList.add('active');
+  state.mode = t.dataset.src==='upload'?'upload':'texture';
+  $('#panelRepo').style.display=t.dataset.src==='repo'?'block':'none';
+  $('#panelUpload').style.display=t.dataset.src==='upload'?'block':'none';
+  // when leaving upload, restore the active pattern tab's mode
+  if(t.dataset.src==='repo'){ const am=document.querySelector('[data-mode].active'); state.mode=am?am.dataset.mode:'texture'; }
+  stopPreviewAnim(); state.templates=[]; $('#cards').innerHTML=''; $('#empty').style.display='block'; render();
+});
+document.querySelectorAll('[data-mode]').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('[data-mode]').forEach(x=>x.classList.remove('active'));t.classList.add('active');state.mode=t.dataset.mode;
+  $('#panelTexture').style.display=state.mode==='texture'?'block':'none';
+  $('#panelColor').style.display=state.mode==='color'?'block':'none';
+  $('#panelSpeckle').style.display=state.mode==='speckle'?'block':'none';
+  $('#panelPrint').style.display=state.mode==='print'?'block':'none';
+  onTweak();
+});
+['tileSize','numColors','shading','outline','zoom','spDensity','decalSize','decalY'].forEach(id=>{const el=$('#'+id),o=$('#'+id+'V');el.addEventListener('input',()=>{if(o)o.textContent=el.value;onTweak();});});
+['solidColor','spBase','spA1','spA2','spA3','cellSize','decalBase'].forEach(id=>$('#'+id).addEventListener('input',onTweak));
+$('#anchor').addEventListener('change',onTweak);
+$('#decalPlace').addEventListener('change',onTweak);
+$('#buildPreview').onclick=buildPreview;
+$('#diceBtn').onclick=randomizePreview;
+$('#downloadAll').onclick=downloadAll;
+$('#saveCfg').onclick=()=>{ const c={body:$('#bodySel').value,anims:$('#animSel').value,items:[...state.checked],colorPref:state.config.colorPref}; localStorage.setItem('lpcClothierConfig',JSON.stringify(c)); state.config=c; $('#status').textContent='Saved as default.'; };
+$('#resetCfg').onclick=()=>{ localStorage.removeItem('lpcClothierConfig'); applyConfig(JSON.parse(JSON.stringify(DEFAULT_CONFIG))); buildCatUI(); $('#status').textContent='Reset to built-in default.'; };
+$('#repoLink').href='https://github.com/'+REPO;
+
+/* ---------- boot ---------- */
+function boot(){
+  // populate the body selector FIRST so the UI is usable even if a later step fails
+  $('#bodySel').innerHTML=BODIES.map(b=>`<option value="${b}">${b}</option>`).join('');
+  try{
+    applyConfig(loadConfig());
+    $('#bodySel').value=state.config.body;
+    buildCatUI();
+    render();
+  }catch(e){
+    const el=$('#err'); if(el) el.textContent='Startup error: '+e.message;
+  }
+}
+boot();
+</script>
+
+<footer class="credit">
+  Pixel character art streams live from the
+  <a href="https://github.com/liberatedpixelcup/Universal-LPC-Spritesheet-Character-Generator" target="_blank" rel="noopener">Universal&nbsp;LPC&nbsp;Spritesheet&nbsp;Generator</a>
+  by the <a href="https://lpc.opengameart.org" target="_blank" rel="noopener">Liberated&nbsp;Pixel&nbsp;Cup</a> artists — huge thanks for their incredible, freely-shared work. 🙏<br>
+  Art is licensed CC-BY-SA / CC-BY / OGA-BY / GPL / CC0 (per asset). <b>If you publish sprites made with this tool you must credit the original authors</b> —
+  see <a href="https://github.com/liberatedpixelcup/Universal-LPC-Spritesheet-Character-Generator/blob/master/CREDITS.csv" target="_blank" rel="noopener">CREDITS.csv</a>.
+  This tool's own code is MIT.
+</footer>
+</body>
+</html>

@@ -22,7 +22,8 @@ It's a single `index.html`. No build step, no server, no dependencies to install
 
 ## 🚀 Use it
 
-- **Hosted:** &lt;add your GitHub Pages URL here&gt;
+- **Hosted (GitHub Pages):** <https://obsidianttrpgproject.github.io/LPC-Pattern-Clothier/> *(enable Pages in repo settings if the link 404s)*
+- **Repository:** <https://github.com/ObsidianTTRPGProject/LPC-Pattern-Clothier>
 - **Locally:** download/clone the repo and open `index.html` in a modern browser (Chrome, Edge, Firefox). Needs internet access to GitHub.
 
 ### How re-skinning works (in one line)
@@ -30,9 +31,9 @@ Each LPC sheet already encodes the garment's **shape (alpha) and shading (lumina
 
 ## 🌐 Hosting on GitHub Pages
 
-1. Push this folder to a GitHub repo.
+1. Push this folder to a GitHub repo (done — <https://github.com/ObsidianTTRPGProject/LPC-Pattern-Clothier>).
 2. Repo **Settings → Pages → Build and deployment → Deploy from a branch**, pick `main` / `/ (root)`.
-3. Your tool is live at `https://<user>.github.io/<repo>/`.
+3. The tool goes live at <https://obsidianttrpgproject.github.io/LPC-Pattern-Clothier/>.
 
 Because everything runs client-side and the art is fetched from `raw.githubusercontent.com` (which allows cross-origin requests), no backend is needed.
 
